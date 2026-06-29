@@ -1,0 +1,374 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum RolUsuario {
+  SUPERADMIN
+  ADMIN
+  GESTOR
+  VIEWER
+}
+
+enum PlanTenant {
+  FREE
+  BASIC
+  PRO
+  ENTERPRISE
+}
+
+enum RegimenFiscal {
+  RESICO
+  RIF
+  GENERAL
+  OTRO
+}
+
+enum TipoDeclaracion {
+  MENSUAL
+  BIMESTRAL
+  ANUAL
+}
+
+enum StatusDeclaracion {
+  PENDIENTE
+  PRESENTADA
+  ENVIADA
+  ENTREGADA
+  NO_APLICA
+}
+
+enum TipoCertificado {
+  EFIRMA
+  CSD
+}
+
+enum TipoPlataforma {
+  BUZON_SATQ
+  BUZON_TRIBUTARIO
+  SIFO
+  AYUNTAMIENTO
+}
+
+enum TipoAccionAuditoria {
+  CREATE
+  UPDATE
+  DELETE
+  LOGIN
+  LOGOUT
+  IMPORT
+}
+
+enum ModuloSistema {
+  DASHBOARD
+  CONTRIBUYENTES
+  DECLARACIONES
+  CERTIFICADOS
+  PLATAFORMAS
+  USUARIOS
+  ROLES
+  CONFIGURACION
+  EXPORTAR
+}
+
+enum AccionPermiso {
+  VER
+  CREAR
+  EDITAR
+  ELIMINAR
+}
+
+enum TipoOverride {
+  GRANT
+  REVOKE
+}
+
+model Tenant {
+  id                String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  nombre            String     @db.VarChar(200)
+  slug              String     @unique @db.VarChar(100)
+  rfcDespacho       String?    @map("rfc_despacho") @db.VarChar(13)
+  correoContacto    String?    @map("correo_contacto") @db.VarChar(200)
+  telefono          String?    @db.VarChar(30)
+  direccion         String?    @db.Text
+  logoUrl           String?    @map("logo_url") @db.Text
+  plan              PlanTenant @default(FREE)
+  activo            Boolean    @default(true)
+  maxContribuyentes Int        @default(50) @map("max_contribuyentes")
+  config            Json       @default("{}")
+  createdAt         DateTime   @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt         DateTime   @updatedAt @map("updated_at") @db.Timestamptz
+
+  tenantConfig         TenantConfig?
+  usuarios             Usuario[]
+  contribuyentes       Contribuyente[]
+  declaraciones        Declaracion[]
+  certificados         Certificado[]
+  constanciasFiscal    ConstanciaFiscal[]
+  accesosPlataforma    AccesoPlataforma[]
+  anunciosVencimientos AnuncioVencimiento[]
+  auditoria            Auditoria[]
+  roles                Rol[]
+  usuarioPermisos      UsuarioPermiso[]
+  usuarioRoles         UsuarioRol[]
+
+  @@map("tenants")
+}
+
+model TenantConfig {
+  id                   String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId             String   @unique @map("tenant_id") @db.Uuid
+  idiomaDefecto        String   @default("es") @map("idioma_defecto") @db.VarChar(5)
+  zonaHoraria          String   @default("America/Mexico_City") @map("zona_horaria") @db.VarChar(50)
+  diasAlertaEfirma     Int      @default(30) @map("dias_alerta_efirma")
+  diasAlertaCsd        Int      @default(30) @map("dias_alerta_csd")
+  diasAlertaAnuncio    Int      @default(15) @map("dias_alerta_anuncio")
+  colorPrimario        String   @default("#1677ff") @map("color_primario") @db.VarChar(7)
+  notificacionesEmail  Boolean  @default(false) @map("notificaciones_email")
+  correoNotificaciones String?  @map("correo_notificaciones") @db.VarChar(200)
+  createdAt            DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt            DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@map("tenant_config")
+}
+
+model Usuario {
+  id           String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId     String?    @map("tenant_id") @db.Uuid
+  nombre       String     @db.VarChar(150)
+  email        String     @db.VarChar(200)
+  passwordHash String     @map("password_hash")
+  rol          RolUsuario @default(GESTOR)
+  activo       Boolean    @default(true)
+  ultimoAcceso DateTime?  @map("ultimo_acceso") @db.Timestamptz
+  createdAt    DateTime   @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt    DateTime   @updatedAt @map("updated_at") @db.Timestamptz
+
+  tenant          Tenant?          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  declaraciones   Declaracion[]
+  auditoria       Auditoria[]
+  permisosUsuario UsuarioPermiso[] @relation("PermisosUsuario")
+  permisosCreados UsuarioPermiso[] @relation("PermisosCreados")
+  usuarioRoles    UsuarioRol[]
+
+  @@unique([email, tenantId])
+  @@map("usuarios")
+}
+
+model Contribuyente {
+  id            String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId      String         @map("tenant_id") @db.Uuid
+  rfc           String         @db.VarChar(13)
+  clave         String?        @db.VarChar(100)
+  nombre        String         @db.VarChar(200)
+  correo        String?        @db.VarChar(200)
+  regimenFiscal RegimenFiscal? @map("regimen_fiscal")
+  activo        Boolean        @default(true)
+  notas         String?        @db.Text
+  createdAt     DateTime       @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt     DateTime       @updatedAt @map("updated_at") @db.Timestamptz
+
+  tenant               Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  declaraciones        Declaracion[]
+  certificados         Certificado[]
+  constanciaFiscal     ConstanciaFiscal[]
+  accesosPlataforma    AccesoPlataforma[]
+  anunciosVencimientos AnuncioVencimiento[]
+
+  @@unique([tenantId, rfc])
+  @@map("contribuyentes")
+}
+
+model Declaracion {
+  id                String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId          String            @map("tenant_id") @db.Uuid
+  contribuyenteId   String            @map("contribuyente_id") @db.Uuid
+  periodo           String            @db.VarChar(20)
+  tipoDeclaracion   TipoDeclaracion   @map("tipo_declaracion")
+  fechaPresentacion DateTime?         @map("fecha_presentacion") @db.Date
+  statusDeclaracion StatusDeclaracion @default(PENDIENTE) @map("status_declaracion")
+  statusEntrega     StatusDeclaracion @default(PENDIENTE) @map("status_entrega")
+  fechaMes1         DateTime?         @map("fecha_mes_1") @db.Date
+  fechaMes2         DateTime?         @map("fecha_mes_2") @db.Date
+  notas             String?           @db.Text
+  createdBy         String?           @map("created_by") @db.Uuid
+  createdAt         DateTime          @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt         DateTime          @updatedAt @map("updated_at") @db.Timestamptz
+
+  tenant        Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  contribuyente Contribuyente @relation(fields: [contribuyenteId], references: [id], onDelete: Cascade)
+  usuario       Usuario?      @relation(fields: [createdBy], references: [id], onDelete: SetNull)
+
+  @@unique([tenantId, contribuyenteId, periodo, tipoDeclaracion])
+  @@map("declaraciones")
+}
+
+model Certificado {
+  id               String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId         String          @map("tenant_id") @db.Uuid
+  contribuyenteId  String          @map("contribuyente_id") @db.Uuid
+  tipo             TipoCertificado
+  fechaVencimiento DateTime        @map("fecha_vencimiento") @db.Date
+  fechaDescargaXml DateTime?       @map("fecha_descarga_xml") @db.Date
+  alertaEnviada    Boolean         @default(false) @map("alerta_enviada")
+  notas            String?         @db.Text
+  createdAt        DateTime        @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt        DateTime        @updatedAt @map("updated_at") @db.Timestamptz
+
+  tenant        Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  contribuyente Contribuyente @relation(fields: [contribuyenteId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, contribuyenteId, tipo])
+  @@map("certificados")
+}
+
+model ConstanciaFiscal {
+  id              String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId        String    @map("tenant_id") @db.Uuid
+  contribuyenteId String    @map("contribuyente_id") @db.Uuid
+  esResico        Boolean   @default(false) @map("es_resico")
+  esRif           Boolean   @default(false) @map("es_rif")
+  mesTramite      String?   @map("mes_tramite") @db.VarChar(20)
+  diaTramite      Int?      @map("dia_tramite")
+  anual2022Fecha  DateTime? @map("anual_2022_fecha") @db.Date
+  anual2024Status String?   @map("anual_2024_status") @db.VarChar(50)
+  notas           String?   @db.Text
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt       DateTime  @updatedAt @map("updated_at") @db.Timestamptz
+
+  tenant        Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  contribuyente Contribuyente @relation(fields: [contribuyenteId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, contribuyenteId])
+  @@map("constancias_fiscal")
+}
+
+model AccesoPlataforma {
+  id                 String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId           String         @map("tenant_id") @db.Uuid
+  contribuyenteId    String         @map("contribuyente_id") @db.Uuid
+  plataforma         TipoPlataforma
+  usuario            String         @db.VarChar(100)
+  passwordEncriptado String         @map("password_encriptado") @db.Text
+  correoActivo       Boolean        @default(false) @map("correo_activo")
+  telefonoActivo     Boolean        @default(false) @map("telefono_activo")
+  notas              String?        @db.Text
+  createdAt          DateTime       @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt          DateTime       @updatedAt @map("updated_at") @db.Timestamptz
+
+  tenant        Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  contribuyente Contribuyente @relation(fields: [contribuyenteId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, contribuyenteId, plataforma])
+  @@map("accesos_plataforma")
+}
+
+model AnuncioVencimiento {
+  id               String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId         String   @map("tenant_id") @db.Uuid
+  contribuyenteId  String   @map("contribuyente_id") @db.Uuid
+  tipo             String   @db.VarChar(100)
+  descripcion      String?  @db.Text
+  fechaVencimiento DateTime @map("fecha_vencimiento") @db.Date
+  alertaEnviada    Boolean  @default(false) @map("alerta_enviada")
+  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt        DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  tenant        Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  contribuyente Contribuyente @relation(fields: [contribuyenteId], references: [id], onDelete: Cascade)
+
+  @@map("anuncios_vencimientos")
+}
+
+model Auditoria {
+  id             String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId       String?             @map("tenant_id") @db.Uuid
+  usuarioId      String?             @map("usuario_id") @db.Uuid
+  accion         TipoAccionAuditoria
+  entidad        String              @db.VarChar(100)
+  entidadId      String?             @map("entidad_id") @db.Uuid
+  payloadAntes   Json?               @map("payload_antes")
+  payloadDespues Json?               @map("payload_despues")
+  ipAddress      String?             @map("ip_address")
+  createdAt      DateTime            @default(now()) @map("created_at") @db.Timestamptz
+
+  tenant  Tenant?  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  usuario Usuario? @relation(fields: [usuarioId], references: [id], onDelete: SetNull)
+
+  @@map("auditoria")
+}
+
+model Rol {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId    String?  @map("tenant_id") @db.Uuid
+  nombre      String   @db.VarChar(100)
+  descripcion String?  @db.Text
+  color       String   @default("#1677ff") @db.VarChar(7)
+  esSistema   Boolean  @default(false) @map("es_sistema")
+  activo      Boolean  @default(true)
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  tenant       Tenant?      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  permisos     RolPermiso[]
+  usuarioRoles UsuarioRol[]
+
+  @@unique([nombre, tenantId])
+  @@map("roles")
+}
+
+model RolPermiso {
+  id        String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  rolId     String        @map("rol_id") @db.Uuid
+  modulo    ModuloSistema
+  accion    AccionPermiso
+  permitido Boolean       @default(false)
+  createdAt DateTime      @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt DateTime      @updatedAt @map("updated_at") @db.Timestamptz
+
+  rol Rol @relation(fields: [rolId], references: [id], onDelete: Cascade)
+
+  @@unique([rolId, modulo, accion])
+  @@map("rol_permisos")
+}
+
+model UsuarioPermiso {
+  id        String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId  String        @map("tenant_id") @db.Uuid
+  usuarioId String        @map("usuario_id") @db.Uuid
+  modulo    ModuloSistema
+  accion    AccionPermiso
+  tipo      TipoOverride
+  razon     String?       @db.Text
+  createdBy String?       @map("created_by") @db.Uuid
+  createdAt DateTime      @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt DateTime      @updatedAt @map("updated_at") @db.Timestamptz
+
+  tenant  Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  usuario Usuario  @relation("PermisosUsuario", fields: [usuarioId], references: [id], onDelete: Cascade)
+  creator Usuario? @relation("PermisosCreados", fields: [createdBy], references: [id], onDelete: SetNull)
+
+  @@unique([tenantId, usuarioId, modulo, accion])
+  @@map("usuario_permisos")
+}
+
+model UsuarioRol {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId  String   @map("tenant_id") @db.Uuid
+  usuarioId String   @map("usuario_id") @db.Uuid
+  rolId     String   @map("rol_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  tenant  Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  usuario Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  rol     Rol     @relation(fields: [rolId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, usuarioId, rolId])
+  @@map("usuario_roles")
+}
