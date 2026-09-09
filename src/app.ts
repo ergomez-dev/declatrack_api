@@ -16,6 +16,7 @@ import usuariosRoutes from './modules/usuarios/usuario.routes';
 import dashboardRoutes from './modules/dashboard/dashboard.routes';
 import tenantsRoutes from './modules/tenants/tenant.routes';
 import rolesRoutes from './modules/roles/rol.routes';
+import permisosRoutes from './modules/permisos/permiso.routes';
 
 const app = express();
 
@@ -34,6 +35,7 @@ app.use('/api/v1/usuarios', usuariosRoutes);
 app.use('/api/v1/dashboard', dashboardRoutes);
 app.use('/api/v1/tenants', tenantsRoutes);
 app.use('/api/v1/roles', rolesRoutes);
+app.use('/api/v1/permisos', permisosRoutes);
 
 app.use((_req, res) => res.status(404).json({ success: false, message: 'Ruta no encontrada' }));
 app.use(errorMiddleware);

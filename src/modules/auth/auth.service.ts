@@ -18,10 +18,12 @@ export async function login(data: LoginDto, ip?: string) {
     tenant = t;
     usuario = await prisma.usuario.findFirst({
       where: { email: data.email, tenantId: t.id },
+      include: { rol: { select: { id: true, nombre: true } } },
     });
   } else {
     usuario = await prisma.usuario.findFirst({
-      where: { email: data.email, tenantId: null, rol: 'SUPERADMIN' },
+      where: { email: data.email, tenantId: null, rol: { nombre: 'SUPERADMIN' } },
+      include: { rol: { select: { id: true, nombre: true } } },
     });
   }
 
@@ -43,11 +45,11 @@ export async function login(data: LoginDto, ip?: string) {
     },
   });
 
-  const token = signToken({ sub: usuario.id, email: usuario.email, rol: usuario.rol, tenantId: usuario.tenantId });
+  const token = signToken({ sub: usuario.id, email: usuario.email, rol: usuario.rol.nombre, rolId: usuario.rolId, tenantId: usuario.tenantId });
 
   return {
     token,
-    user: { id: usuario.id, nombre: usuario.nombre, email: usuario.email, rol: usuario.rol, tenantId: usuario.tenantId },
+    user: { id: usuario.id, nombre: usuario.nombre, email: usuario.email, rol: usuario.rol.nombre, rolId: usuario.rolId, tenantId: usuario.tenantId },
     ...(tenant ? { tenant: { id: tenant.id, nombre: tenant.nombre, slug: tenant.slug, config: tenant.tenantConfig } } : {}),
   };
 }
@@ -56,10 +58,10 @@ export async function getProfile(userId: string, tenantId?: string) {
   const where = tenantId ? { id: userId, tenantId } : { id: userId };
   const usuario = await prisma.usuario.findFirst({
     where,
-    select: { id: true, nombre: true, email: true, rol: true, tenantId: true, ultimoAcceso: true, createdAt: true },
+    select: { id: true, nombre: true, email: true, rol: { select: { id: true, nombre: true } }, tenantId: true, ultimoAcceso: true, createdAt: true },
   });
   if (!usuario) throw Object.assign(new Error('Usuario no encontrado'), { statusCode: 404 });
-  return usuario;
+  return { ...usuario, rol: usuario.rol.nombre, rolId: usuario.rol.id };
 }
 
 export async function changePassword(userId: string, tenantId: string | null, data: ChangePasswordDto) {

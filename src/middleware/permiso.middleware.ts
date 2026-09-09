@@ -1,32 +1,30 @@
 import { Request, Response, NextFunction } from 'express';
 import { ModuloSistema, AccionPermiso } from '@prisma/client';
 import { errorResponse } from '../utils/response.util';
-import { PERMISOS_DEFAULTS } from '../config/permisos.defaults';
 import prisma from '../config/database';
 
+// Resuelve los permisos efectivos del usuario:
+//   1. Base: rol_permisos del rol asignado (usuarios.id_rol).
+//   2. Overrides por usuario (usuario_permisos, GRANT/REVOKE) — hoy sin uso, se conserva.
 async function buildPermisos(
-  tenantId: string,
+  tenantId: string | undefined,
   usuarioId: string,
-  rolBase: keyof typeof PERMISOS_DEFAULTS
+  rolId: string
 ): Promise<Record<string, Record<string, boolean>>> {
-  const permisos = JSON.parse(JSON.stringify(PERMISOS_DEFAULTS[rolBase])) as Record<string, Record<string, boolean>>;
+  const permisos: Record<string, Record<string, boolean>> = {};
 
-  const usuarioRoles = await prisma.usuarioRol.findMany({
-    where: { tenantId, usuarioId },
-    include: { rol: { include: { permisos: true } } },
-  });
-
-  for (const ur of usuarioRoles) {
-    for (const rp of ur.rol.permisos) {
-      if (!permisos[rp.modulo]) permisos[rp.modulo] = {} as Record<string, boolean>;
-      permisos[rp.modulo][rp.accion] = rp.permitido;
-    }
+  const rolPermisos = await prisma.rolPermiso.findMany({ where: { rolId } });
+  for (const rp of rolPermisos) {
+    if (!permisos[rp.modulo]) permisos[rp.modulo] = {};
+    permisos[rp.modulo][rp.accion] = rp.permitido;
   }
 
-  const overrides = await prisma.usuarioPermiso.findMany({ where: { tenantId, usuarioId } });
-  for (const ov of overrides) {
-    if (!permisos[ov.modulo]) permisos[ov.modulo] = {} as Record<string, boolean>;
-    permisos[ov.modulo][ov.accion] = ov.tipo === 'GRANT';
+  if (tenantId) {
+    const overrides = await prisma.usuarioPermiso.findMany({ where: { tenantId, usuarioId } });
+    for (const ov of overrides) {
+      if (!permisos[ov.modulo]) permisos[ov.modulo] = {};
+      permisos[ov.modulo][ov.accion] = ov.tipo === 'GRANT';
+    }
   }
 
   return permisos;
@@ -39,11 +37,7 @@ export function requirePermiso(modulo: ModuloSistema, accion: AccionPermiso) {
 
     try {
       if (!req.permisos) {
-        req.permisos = await buildPermisos(
-          req.tenantId!,
-          req.user.sub,
-          req.user.rol as keyof typeof PERMISOS_DEFAULTS
-        );
+        req.permisos = await buildPermisos(req.tenantId, req.user.sub, req.user.rolId);
       }
       if (req.permisos[modulo]?.[accion]) return next();
       return errorResponse(res, `Sin permiso para ${accion} en ${modulo}`, 403);

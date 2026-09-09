@@ -2,7 +2,7 @@ import { z } from 'zod';
 
 const permisoSchema = z.object({
   modulo: z.enum(['DASHBOARD','CONTRIBUYENTES','DECLARACIONES','CERTIFICADOS','PLATAFORMAS','USUARIOS','ROLES','CONFIGURACION','EXPORTAR']),
-  accion: z.enum(['VER','CREAR','EDITAR','ELIMINAR']),
+  accion: z.enum(['VER','CREAR','EDITAR','ELIMINAR','ACTIVAR','DESACTIVAR']),
   permitido: z.boolean(),
 });
 
@@ -18,7 +18,7 @@ export const updateRolSchema = createRolSchema.partial();
 export const createOverrideSchema = z.object({
   usuarioId: z.string().uuid(),
   modulo: z.enum(['DASHBOARD','CONTRIBUYENTES','DECLARACIONES','CERTIFICADOS','PLATAFORMAS','USUARIOS','ROLES','CONFIGURACION','EXPORTAR']),
-  accion: z.enum(['VER','CREAR','EDITAR','ELIMINAR']),
+  accion: z.enum(['VER','CREAR','EDITAR','ELIMINAR','ACTIVAR','DESACTIVAR']),
   tipo: z.enum(['GRANT','REVOKE']),
   razon: z.string().optional(),
 });

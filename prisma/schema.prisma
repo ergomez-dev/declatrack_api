@@ -7,13 +7,6 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-enum RolUsuario {
-  SUPERADMIN
-  ADMIN
-  GESTOR
-  VIEWER
-}
-
 enum PlanTenant {
   FREE
   BASIC
@@ -80,6 +73,8 @@ enum AccionPermiso {
   CREAR
   EDITAR
   ELIMINAR
+  ACTIVAR
+  DESACTIVAR
 }
 
 enum TipoOverride {
@@ -114,7 +109,6 @@ model Tenant {
   auditoria            Auditoria[]
   roles                Rol[]
   usuarioPermisos      UsuarioPermiso[]
-  usuarioRoles         UsuarioRol[]
 
   @@map("tenants")
 }
@@ -139,23 +133,25 @@ model TenantConfig {
 }
 
 model Usuario {
-  id           String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  tenantId     String?    @map("tenant_id") @db.Uuid
-  nombre       String     @db.VarChar(150)
-  email        String     @db.VarChar(200)
-  passwordHash String     @map("password_hash")
-  rol          RolUsuario @default(GESTOR)
-  activo       Boolean    @default(true)
-  ultimoAcceso DateTime?  @map("ultimo_acceso") @db.Timestamptz
-  createdAt    DateTime   @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt    DateTime   @updatedAt @map("updated_at") @db.Timestamptz
+  id           String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId     String?   @map("tenant_id") @db.Uuid
+  rolId        String    @map("id_rol") @db.Uuid
+  nombre       String    @db.VarChar(150)
+  email        String    @db.VarChar(200)
+  passwordHash String    @map("password_hash")
+  activo       Boolean   @default(true)
+  ultimoAcceso DateTime? @map("ultimo_acceso") @db.Timestamptz
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt    DateTime  @updatedAt @map("updated_at") @db.Timestamptz
 
-  tenant          Tenant?          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  declaraciones   Declaracion[]
-  auditoria       Auditoria[]
-  permisosUsuario UsuarioPermiso[] @relation("PermisosUsuario")
-  permisosCreados UsuarioPermiso[] @relation("PermisosCreados")
-  usuarioRoles    UsuarioRol[]
+  tenant             Tenant?          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  rol                Rol              @relation("UsuarioRol", fields: [rolId], references: [id])
+  declaraciones      Declaracion[]
+  auditoria          Auditoria[]
+  permisosUsuario    UsuarioPermiso[] @relation("PermisosUsuario")
+  permisosCreados    UsuarioPermiso[] @relation("PermisosCreados")
+  permisosCatCreados Permiso[]        @relation("PermisoCreador")
+  permisosCatModif   Permiso[]        @relation("PermisoModificador")
 
   @@unique([email, tenantId])
   @@map("usuarios")
@@ -315,9 +311,9 @@ model Rol {
   createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz
   updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz
 
-  tenant       Tenant?      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  permisos     RolPermiso[]
-  usuarioRoles UsuarioRol[]
+  tenant   Tenant?      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  permisos RolPermiso[]
+  usuarios Usuario[]    @relation("UsuarioRol")
 
   @@unique([nombre, tenantId])
   @@map("roles")
@@ -358,17 +354,19 @@ model UsuarioPermiso {
   @@map("usuario_permisos")
 }
 
-model UsuarioRol {
-  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  tenantId  String   @map("tenant_id") @db.Uuid
-  usuarioId String   @map("usuario_id") @db.Uuid
-  rolId     String   @map("rol_id") @db.Uuid
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+/// Catálogo legible de permisos por rol (espejo de rol_permisos, mantenido por el seed).
+model Permiso {
+  id            String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  nombreRol     String    @map("nombre_rol") @db.VarChar(1000)
+  identificador String    @db.VarChar(1000)
+  creadoPor     String    @map("creado_por") @db.Uuid
+  creado        DateTime  @default(now()) @db.Timestamptz
+  modificadoPor String?   @map("modificado_por") @db.Uuid
+  modificado    DateTime? @db.Timestamptz
 
-  tenant  Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  usuario Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
-  rol     Rol     @relation(fields: [rolId], references: [id], onDelete: Cascade)
+  creador     Usuario  @relation("PermisoCreador", fields: [creadoPor], references: [id])
+  modificador Usuario? @relation("PermisoModificador", fields: [modificadoPor], references: [id], onDelete: SetNull)
 
-  @@unique([tenantId, usuarioId, rolId])
-  @@map("usuario_roles")
+  @@unique([nombreRol, identificador])
+  @@map("permisos")
 }

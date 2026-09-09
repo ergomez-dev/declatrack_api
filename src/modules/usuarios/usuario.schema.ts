@@ -4,12 +4,12 @@ export const createUsuarioSchema = z.object({
   nombre: z.string().min(2).max(150),
   email: z.string().email(),
   password: z.string().min(8, 'Contraseña mínimo 8 caracteres'),
-  rol: z.enum(['ADMIN', 'GESTOR', 'VIEWER']).default('GESTOR'),
+  rolId: z.string().uuid('Rol inválido'),
 });
 
 export const updateUsuarioSchema = z.object({
   nombre: z.string().min(2).max(150).optional(),
-  rol: z.enum(['ADMIN', 'GESTOR', 'VIEWER']).optional(),
+  rolId: z.string().uuid('Rol inválido').optional(),
   activo: z.boolean().optional(),
 });
 

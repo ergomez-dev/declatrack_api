@@ -21,7 +21,7 @@ router.get('/matrix', requirePermiso('ROLES', 'VER'), async (req: Request, res: 
 
 router.get('/mis-permisos', async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const p = await permisoSvc.resolvePermisos(req.tenantId!, req.user!.sub, req.user!.rol as never);
+    const p = await permisoSvc.resolvePermisos(req.tenantId, req.user!.sub, req.user!.rolId);
     successResponse(res, p);
   } catch (e) { next(e); }
 });
@@ -56,10 +56,6 @@ router.delete('/permisos/:overrideId', requirePermiso('ROLES', 'EDITAR'), async 
 
 router.post('/usuarios/:uid/asignar', requirePermiso('ROLES', 'EDITAR'), validate(assignRolSchema), async (req: Request, res: Response, next: NextFunction) => {
   try { successResponse(res, await permisoSvc.assignRol(req.tenantId!, String(req.params.uid), req.body.rolId), 'Rol asignado'); } catch (e) { next(e); }
-});
-
-router.delete('/usuarios/:uid/desasignar', requirePermiso('ROLES', 'EDITAR'), validate(assignRolSchema), async (req: Request, res: Response, next: NextFunction) => {
-  try { await permisoSvc.unassignRol(req.tenantId!, String(req.params.uid), req.body.rolId); successResponse(res, null, 'Rol desasignado'); } catch (e) { next(e); }
 });
 
 export default router;

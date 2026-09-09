@@ -1,11 +1,11 @@
 import jwt, { JwtPayload } from 'jsonwebtoken';
-import { RolUsuario } from '@prisma/client';
 import { env } from '../config/env';
 
 export interface AuthPayload extends JwtPayload {
   sub: string;
   email: string;
-  rol: RolUsuario;
+  rol: string; // nombre del rol (p.ej. 'SUPERADMIN'), tomado de roles.nombre
+  rolId: string;
   tenantId: string | null;
 }
 

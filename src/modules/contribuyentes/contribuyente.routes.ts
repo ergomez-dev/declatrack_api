@@ -36,7 +36,7 @@ router.put('/:id', requirePermiso('CONTRIBUYENTES', 'EDITAR'), validate(updateCo
   try { successResponse(res, await svc.update(req.tenantId!, String(req.params.id), req.body), 'Contribuyente actualizado'); } catch (e) { next(e); }
 });
 
-router.delete('/:id', requirePermiso('CONTRIBUYENTES', 'ELIMINAR'), async (req: Request, res: Response, next: NextFunction) => {
+router.delete('/:id', requirePermiso('CONTRIBUYENTES', 'DESACTIVAR'), async (req: Request, res: Response, next: NextFunction) => {
   try { await svc.softDelete(req.tenantId!, String(req.params.id)); successResponse(res, null, 'Desactivado'); } catch (e) { next(e); }
 });
 

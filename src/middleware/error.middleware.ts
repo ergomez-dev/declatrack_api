@@ -18,8 +18,8 @@ export function errorMiddleware(err: Error, req: Request, res: Response, _next: 
     }
   }
 
-  const status = 500;
-  const message = 'Error interno del servidor';
+  const status = (err as { statusCode?: number }).statusCode ?? 500;
+  const message = status === 500 ? 'Error interno del servidor' : err.message;
   const stack = env.NODE_ENV !== 'production' ? err.stack : undefined;
 
   return res.status(status).json({ success: false, message, ...(stack ? { stack } : {}) });

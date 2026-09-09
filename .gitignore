@@ -3,3 +3,11 @@ node_modules
 .env
 
 /src/generated/prisma
+
+# Seed scripts contienen credenciales de arranque — fuera de control de versiones
+prisma/seed/
+
+# Herramientas locales / plugins (Graphify, config de Claude Code)
+graphify-out/
+.claude/
+CLAUDE.md

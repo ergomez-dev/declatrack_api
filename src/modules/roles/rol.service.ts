@@ -9,7 +9,7 @@ export async function findAllRoles(tenantId: string) {
     where: { OR: [{ tenantId }, { tenantId: null, esSistema: true }] },
     include: {
       permisos: true,
-      _count: { select: { usuarioRoles: true } },
+      _count: { select: { usuarios: true } },
     },
     orderBy: [{ esSistema: 'desc' }, { nombre: 'asc' }],
   });
@@ -18,7 +18,7 @@ export async function findAllRoles(tenantId: string) {
 export async function findRolById(tenantId: string, rolId: string) {
   const rol = await prisma.rol.findFirst({
     where: { id: rolId, OR: [{ tenantId }, { tenantId: null, esSistema: true }] },
-    include: { permisos: true, _count: { select: { usuarioRoles: true } } },
+    include: { permisos: true, _count: { select: { usuarios: true } } },
   });
   if (!rol) throw Object.assign(new Error('Rol no encontrado'), { statusCode: 404 });
   return rol;
@@ -71,10 +71,10 @@ export async function removeRol(tenantId: string, rolId: string) {
   const existing = await findRolById(tenantId, rolId);
   if (existing.esSistema) throw Object.assign(new Error('No se puede eliminar un rol de sistema'), { statusCode: 400 });
 
-  const asignados = await prisma.usuarioRol.findMany({ where: { rolId }, include: { usuario: { select: { nombre: true, email: true } } } });
+  const asignados = await prisma.usuario.findMany({ where: { rolId }, select: { nombre: true, email: true } });
   if (asignados.length > 0) {
     const err = Object.assign(new Error('El rol tiene usuarios asignados'), { statusCode: 409 });
-    (err as unknown as Record<string, unknown>).usuarios = asignados.map((a) => a.usuario);
+    (err as unknown as Record<string, unknown>).usuarios = asignados;
     throw err;
   }
 
@@ -88,7 +88,7 @@ export async function getRolMatrix(tenantId: string) {
   });
 
   const modulos: ModuloSistema[] = ['DASHBOARD','CONTRIBUYENTES','DECLARACIONES','CERTIFICADOS','PLATAFORMAS','USUARIOS','ROLES','CONFIGURACION','EXPORTAR'];
-  const acciones: AccionPermiso[] = ['VER','CREAR','EDITAR','ELIMINAR'];
+  const acciones: AccionPermiso[] = ['VER','CREAR','EDITAR','ELIMINAR','ACTIVAR','DESACTIVAR'];
 
   return roles.map((rol) => ({
     id: rol.id,
