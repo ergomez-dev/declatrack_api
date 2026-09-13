@@ -2,11 +2,11 @@ import { z } from 'zod';
 
 export const createContribuyenteSchema = z.object({
   rfc: z.string().min(12).max(13).toUpperCase(),
-  clave: z.string().max(100).optional(),
+  clave: z.string().max(100).optional().nullable(),
   nombre: z.string().min(2).max(200),
-  correo: z.string().email().optional(),
-  regimenFiscal: z.enum(['RESICO', 'RIF', 'GENERAL', 'OTRO']).optional(),
-  notas: z.string().optional(),
+  correo: z.string().email().optional().nullable(),
+  regimenFiscal: z.enum(['RESICO', 'RIF', 'GENERAL', 'OTRO']).optional().nullable(),
+  notas: z.string().optional().nullable(),
 });
 
 export const updateContribuyenteSchema = createContribuyenteSchema.partial();

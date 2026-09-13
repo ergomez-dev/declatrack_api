@@ -10,7 +10,9 @@ import { successResponse, paginatedResponse } from '../../utils/response.util';
 const router = Router();
 router.use(authMiddleware, tenantMiddleware);
 
-router.get('/', requirePermiso('CONTRIBUYENTES', 'VER'), async (req: Request, res: Response, next: NextFunction) => {
+// Sin requirePermiso: Certificados/Declaraciones/Plataformas usan este listado para
+// llenar su selector de contribuyente, sin importar si el rol tiene VER en este módulo.
+router.get('/', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const q = {
       page: Number(req.query.page ?? 1),

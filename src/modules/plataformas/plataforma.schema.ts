@@ -7,7 +7,7 @@ export const createAccesoSchema = z.object({
   password: z.string().min(1),
   correoActivo: z.boolean().optional().default(false),
   telefonoActivo: z.boolean().optional().default(false),
-  notas: z.string().optional(),
+  notas: z.string().optional().nullable(),
 });
 
 export const updateAccesoSchema = createAccesoSchema.partial().omit({ contribuyenteId: true, plataforma: true });

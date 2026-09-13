@@ -9,7 +9,7 @@ export const createDeclaracionSchema = z.object({
   statusEntrega: z.enum(['PENDIENTE', 'PRESENTADA', 'ENVIADA', 'ENTREGADA', 'NO_APLICA']).optional(),
   fechaMes1: z.string().datetime({ offset: true }).optional().nullable(),
   fechaMes2: z.string().datetime({ offset: true }).optional().nullable(),
-  notas: z.string().optional(),
+  notas: z.string().optional().nullable(),
 });
 
 export const updateDeclaracionSchema = createDeclaracionSchema.partial().omit({ contribuyenteId: true, periodo: true, tipoDeclaracion: true });

@@ -5,12 +5,11 @@ export function tenantMiddleware(req: Request, res: Response, next: NextFunction
   if (!req.user) {
     return errorResponse(res, 'Autenticación requerida', 401);
   }
-  if (req.user.rol === 'SUPERADMIN') {
-    req.tenantId = req.user.tenantId ?? undefined;
-    return next();
-  }
+  // El SUPERADMIN global (tenantId null) no tiene despacho propio: dejarlo pasar con
+  // tenantId undefined haría que Prisma ignore el filtro (where: { tenantId: undefined }
+  // no filtra) y mezcle datos de todos los despachos en las rutas tenant-scoped.
   if (!req.user.tenantId) {
-    return errorResponse(res, 'Usuario no asociado a ningún despacho', 403);
+    return errorResponse(res, 'SUPERADMIN no tiene un despacho asociado; usa el módulo de Tenants', 403);
   }
   req.tenantId = req.user.tenantId;
   next();

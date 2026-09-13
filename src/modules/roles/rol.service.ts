@@ -4,11 +4,14 @@ import { ModuloSistema, AccionPermiso } from '@prisma/client';
 
 const SISTEMA_NOMBRES = ['SUPERADMIN', 'ADMIN', 'GESTOR', 'VIEWER'];
 
+// Sin la matriz de permisos: ningún caller de este listado la usa (ni la tabla de
+// Roles ni los selectores de rol en Usuarios/Permisos), y exponerla igual filtraría
+// la matriz completa a cualquier usuario del tenant al abrir este endpoint sin permiso.
+// El detalle de un rol (findRolById) y /roles/matrix sí la incluyen porque ahí se muestra.
 export async function findAllRoles(tenantId: string) {
   return prisma.rol.findMany({
     where: { OR: [{ tenantId }, { tenantId: null, esSistema: true }] },
     include: {
-      permisos: true,
       _count: { select: { usuarios: true } },
     },
     orderBy: [{ esSistema: 'desc' }, { nombre: 'asc' }],

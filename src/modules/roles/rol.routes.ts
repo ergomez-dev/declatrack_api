@@ -11,7 +11,10 @@ import { successResponse } from '../../utils/response.util';
 const router = Router();
 router.use(authMiddleware, tenantMiddleware);
 
-router.get('/', requirePermiso('ROLES', 'VER'), async (req: Request, res: Response, next: NextFunction) => {
+// Sin requirePermiso: Usuarios y la pestaña Permisos usan este listado para llenar su
+// selector de rol, sin importar si el rol del caller tiene VER en este módulo. Ya no
+// incluye la matriz de permisos (ver rol.service.findAllRoles), así que no hay fuga.
+router.get('/', async (req: Request, res: Response, next: NextFunction) => {
   try { successResponse(res, await rolSvc.findAllRoles(req.tenantId!)); } catch (e) { next(e); }
 });
 

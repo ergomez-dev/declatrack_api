@@ -5,7 +5,7 @@ export const createCertificadoSchema = z.object({
   tipo: z.enum(['EFIRMA', 'CSD']),
   fechaVencimiento: z.string().min(8),
   fechaDescargaXml: z.string().optional().nullable(),
-  notas: z.string().optional(),
+  notas: z.string().optional().nullable(),
 });
 
 export const updateCertificadoSchema = createCertificadoSchema.partial().omit({ contribuyenteId: true, tipo: true });
